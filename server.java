@@ -1,37 +1,59 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
 import java.io.*;
 import java.net.*;
 
-public class server {
+public class ChatServer {
+    private static JTextArea chatArea;
+    private static JTextField inputField;
+    private static PrintWriter out;
+
     public static void main(String[] args) {
-        int port = 12345; // Choose any available port
+        JFrame frame = new JFrame("Chat Server");
+        frame.setSize(400, 500);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLayout(new BorderLayout());
 
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
-            System.out.println("Server started. Waiting for a client...");
-            
-            Socket socket = serverSocket.accept(); // Accept a client connection
-            System.out.println("Client connected!");
+        chatArea = new JTextArea();
+        chatArea.setEditable(false);
+        frame.add(new JScrollPane(chatArea), BorderLayout.CENTER);
 
-            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-            BufferedReader userInput = new BufferedReader(new InputStreamReader(System.in));
+        inputField = new JTextField();
+        JButton sendButton = new JButton("Send");
+
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.add(inputField, BorderLayout.CENTER);
+        panel.add(sendButton, BorderLayout.EAST);
+        frame.add(panel, BorderLayout.SOUTH);
+
+        frame.setVisible(true);
+
+        try (ServerSocket serverSocket = new ServerSocket(12345);
+             Socket socket = serverSocket.accept();
+             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+
+            chatArea.append("Client connected!\n");
+            out = new PrintWriter(socket.getOutputStream(), true);
+
+            sendButton.addActionListener((ActionEvent e) -> sendMessage());
+            inputField.addActionListener((ActionEvent e) -> sendMessage());
 
             String message;
-            while (true) {
-                message = in.readLine();
-                if (message == null || message.equalsIgnoreCase("bye")) {
-                    System.out.println("Client disconnected.");
-                    break;
-                }
-                System.out.println("Client: " + message);
-
-                System.out.print("You: ");
-                String reply = userInput.readLine();
-                out.println(reply);
+            while ((message = in.readLine()) != null) {
+                chatArea.append("Client: " + message + "\n");
             }
-
-            socket.close();
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    private static void sendMessage() {
+        String message = inputField.getText();
+        if (!message.isEmpty()) {
+            chatArea.append("You: " + message + "\n");
+            out.println(message);
+            inputField.setText("");
         }
     }
 }
